@@ -1,10 +1,16 @@
 ﻿using System;
 using System.Windows.Forms;
+using ClassLibrary;
 
-namespace Calculator
+namespace CS_lab_5_Calculator
 {
     public partial class Form1 : Form
     {
+        /// <summary>
+        /// Стандартное сообщение о непредвиденной ошибке.
+        /// </summary>
+        public static string Error { get; } = "Ошибка";
+
         public Form1()
         {
             InitializeComponent();
@@ -17,312 +23,259 @@ namespace Calculator
         /// <param name="e"></param>
         private void InputSymbol(object sender, EventArgs e)
         {
-            if (Calculator.IsError)
-            {
-                return;
-            }
+            buttonEqual.Focus();
 
-            //Если количество символов на дисплее больше 15 и не ожидается нового числа, то отменяем ввод.
-            else if (display.Text.Length > 15 && !Calculator.IsNewNumberWaiting)
-            {
-                return;
-            }
+            Button pressedButton = (Button)sender;
 
-            else if (Calculator.IsLastEqualButton)
-            {
-                display.Text = "0";
-
-                Calculator.SetDefaultValues();
-            }
-
-            else
-            {
-
-            }
-
-            Button buttonSymbol = (Button)sender;
-
-            //Если повторно вводится запятая, то отменяем ввод.
-            if (buttonSymbol.Text == "," && display.Text.Contains(","))
+            if (Calculator.IsClearingOnly ||
+                (((display.Text.Length >= 15 && pressedButton != buttonComma && display.Text[display.Text.Length - 1] != buttonComma.Text[0]) ||
+                (pressedButton == buttonComma && display.Text.Contains(","))) && !Calculator.IsNewNumberExpected))
             {
                 return;
             }
 
             //Если ожидается ввод нового числа или в дисплее "0", то стираем старое число.
-            else if (Calculator.IsNewNumberWaiting || display.Text == "0")
+            if (Calculator.IsNewNumberExpected || display.Text == "0")
             {
-                display.Text = buttonSymbol.Text != "," ? "" : "0";
+                display.Text = pressedButton != buttonComma ? "" : "0";
             }
 
-            else
-            {
+            display.Text += pressedButton.Text;
 
+            ChangeFontSize();
+
+            if (Calculator.IsEqualsLastOperation)
+            {
+                Calculator.Result = Math.Round(double.Parse(display.Text), 13);
             }
 
-            display.Text += buttonSymbol.Text;
-            Calculator.IsNewNumberWaiting = false;
+            Calculator.IsNewNumberExpected = false;
         }
 
+        /// <summary>
+        /// Изменение размера шрифта в дисплее, чтобы содержимое полностью помещалось.
+        /// </summary>
+        private void ChangeFontSize()
+        {
+            display.Font = display.Text.Length > 15
+                ? new System.Drawing.Font("Microsoft Sans Serif", 13F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, 204)
+                : new System.Drawing.Font("Microsoft Sans Serif", 15F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, 204);
+        }
+
+        /// <summary>
+        /// Кнопка "=".
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
         private void ButtonEqual_Click(object sender, EventArgs e)
         {
-            if (Calculator.IsNewNumberWaiting || Calculator.IsError)
+            if (Calculator.IsClearingOnly)
             {
                 return;
             }
 
-            else
+            try
             {
-                try
+                if (Calculator.IsNewNumberExpected)
                 {
-                    display.Text = Calculator.Calculate(double.Parse(display.Text)).ToString();
+                    display.Text = Calculator.Calculate(Calculator.LastSecond).ToString();
                 }
 
-                catch (DivideByZeroException)
+                else
                 {
-                    display.Text = "На 0 делить нельзя";
-                }
+                    if (!Calculator.IsEqualsLastOperation)
+                    {
+                        Calculator.LastSecond = double.Parse(display.Text);
+                    }
 
-                Calculator.IsNewNumberWaiting = true;
-                Calculator.IsLastEqualButton = true;
+                    display.Text = Calculator.Calculate(Calculator.LastSecond).ToString();
+                }
             }
+
+            catch (CustomExceptions exc)
+            {
+                display.Text = exc.Message;
+            }
+
+            catch
+            {
+                display.Text = Error;
+            }
+
+            ChangeFontSize();
+
+            Calculator.IsNewNumberExpected = true;
+            Calculator.IsEqualsLastOperation = true;
         }
 
-        private void Button16_Click(object sender, EventArgs e)
+        /// <summary>
+        /// Кнопка "C".
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void ButtonClear_Click(object sender, EventArgs e)
         {
+            buttonEqual.Focus();
+
             display.Text = "0";
 
+            ChangeFontSize();
             Calculator.SetDefaultValues();
         }
 
-        private void Button15_Click(object sender, EventArgs e)
+        /// <summary>
+        /// Кнопка "+-".
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void ButtonChangeSign_Click(object sender, EventArgs e)
         {
-            if (Calculator.IsError || display.Text == "0")
+            buttonEqual.Focus();
+
+            if (Calculator.IsClearingOnly || display.Text == "0")
             {
                 return;
             }
 
-            //Если хранимое число и число на дисплее равны, то у хранимого числа тоже меняем знак.
-            else if (Math.Abs(Calculator.Number - double.Parse(display.Text)) <= 0.00000000001)
+            display.Text = display.Text[0] != '-' ? "-" + display.Text : display.Text.Remove(0, 1);
+
+            ChangeFontSize();
+
+            double displayNumber = double.Parse(display.Text);
+
+            //Если число на дисплее было равно хранимому результату и последняя операция - "=", то меняем знак у хранимого результата.
+            if (Math.Round(-displayNumber, 13) == Calculator.Result && Calculator.IsEqualsLastOperation)
             {
-                display.Text = display.Text[0] != '-' ? "-" + display.Text : display.Text.Remove(0, 1);
-                Calculator.Number = double.Parse(display.Text);
+                Calculator.Result = displayNumber;
             }
 
-            else
+            Calculator.IsNewNumberExpected = false;
+        }
+
+        /// <summary>
+        /// Кнопка "⇦".
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void ButtonDeleteLast_Click(object sender, EventArgs e)
+        {
+            buttonEqual.Focus();
+
+            if (Calculator.IsClearingOnly || Calculator.IsNewNumberExpected)
             {
-                display.Text = display.Text[0] != '-' ? "-" + display.Text : display.Text.Remove(0, 1);
+                return;
+            }
+
+            display.Text = display.Text.Remove(display.Text.Length - 1);
+
+            if (display.Text == "" || display.Text == "-" || display.Text == "-0")
+            {
+                display.Text = "0";
+            }
+
+            ChangeFontSize();
+
+            if (Calculator.IsEqualsLastOperation)
+            {
+                Calculator.Result = double.Parse(display.Text);
             }
         }
 
-        private void buttonDeleteLast_Click(object sender, EventArgs e)
+        /// <summary>
+        /// Обработка нажатия кнопок с арифметическими операциями.
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void ProcessArithmeticOperation(object sender, EventArgs e)
         {
-            if (Calculator.IsError || Calculator.IsNewNumberWaiting)
+            buttonEqual.Focus();
+
+            if (Calculator.IsClearingOnly)
             {
                 return;
             }
 
-            else
-            {
-                display.Text = display.Text.Remove(display.Text.Length - 1);
+            Calculator.LastSecond = double.Parse(display.Text);
 
-                if (display.Text == "" || display.Text == "-" || display.Text == "-0")
+            if (!Calculator.IsNewNumberExpected)
+            {
+                if (Calculator.IsEqualsLastOperation)
                 {
-                    display.Text = "0";
+                    Calculator.Operation = 0;
                 }
+
+                try
+                {
+                    display.Text = Calculator.Calculate(Calculator.LastSecond).ToString();
+                }
+
+                catch (CustomExceptions exc)
+                {
+                    display.Text = exc.Message;
+                }
+
+                catch
+                {
+                    display.Text = Error;
+                }
+
+                ChangeFontSize();
+
+                Calculator.IsNewNumberExpected = true;
             }
-        }
 
-        private void Button17_Click(object sender, EventArgs e)
-        {
-            if (Calculator.IsError)
+            Calculator.IsEqualsLastOperation = false;
+            Button pressedButton = (Button)sender;
+
+            if (pressedButton == buttonPlus)
             {
-                return;
-            }
-
-            else
-            {
-                if (!Calculator.IsNewNumberWaiting)
-                {
-                    try
-                    {
-                        display.Text = Calculator.Calculate(double.Parse(display.Text)).ToString();
-                    }
-
-                    catch (DivideByZeroException)
-                    {
-                        display.Text = "На 0 делить нельзя";
-                    }
-
-                    Calculator.IsNewNumberWaiting = true;
-                }
-
-                else
-                {
-
-                }
-
                 Calculator.Operation = 1;
-                Calculator.IsLastEqualButton = false;
-            }
-        }
-
-        private void ButtonMinus_Click(object sender, EventArgs e)
-        {
-            if (Calculator.IsError)
-            {
-                return;
             }
 
-            else
+            else if (pressedButton == buttonMinus)
             {
-                if (!Calculator.IsNewNumberWaiting)
-                {
-                    try
-                    {
-                        display.Text = Calculator.Calculate(double.Parse(display.Text)).ToString();
-                    }
-
-                    catch (DivideByZeroException)
-                    {
-                        display.Text = "На 0 делить нельзя";
-                    }
-
-                    Calculator.IsNewNumberWaiting = true;
-                }
-
-                else
-                {
-
-                }
-
                 Calculator.Operation = 2;
-                Calculator.IsLastEqualButton = false;
-            }
-        }
-
-        private void ButtonMultiplication_Click(object sender, EventArgs e)
-        {
-            if (Calculator.IsError)
-            {
-                return;
             }
 
-            else
+            else if (pressedButton == buttonMultiplication)
             {
-                if (!Calculator.IsNewNumberWaiting)
-                {
-                    try
-                    {
-                        display.Text = Calculator.Calculate(double.Parse(display.Text)).ToString();
-                    }
-
-                    catch (DivideByZeroException)
-                    {
-                        display.Text = "На 0 делить нельзя";
-                    }
-
-                    Calculator.IsNewNumberWaiting = true;
-                }
-
-                else
-                {
-
-                }
-
                 Calculator.Operation = 3;
-                Calculator.IsLastEqualButton = false;
-            }
-        }
-
-        private void ButtonDivision_Click(object sender, EventArgs e)
-        {
-            if (Calculator.IsError)
-            {
-                return;
             }
 
-            else
+            else if (pressedButton == buttonDivision)
             {
-                if (!Calculator.IsNewNumberWaiting)
-                {
-                    try
-                    {
-                        display.Text = Calculator.Calculate(double.Parse(display.Text)).ToString();
-                    }
-
-                    catch (DivideByZeroException)
-                    {
-                        display.Text = "На 0 делить нельзя";
-                    }
-
-                    Calculator.IsNewNumberWaiting = true;
-                }
-
-                else
-                {
-
-                }
-
                 Calculator.Operation = 4;
-                Calculator.IsLastEqualButton = false;
             }
         }
-    }
 
-    public class Calculator
-    {
-        public static double Number { get; set; } = 0; //Обработанное число.
-        public static int Operation { get; set; } = 1; //Номер операции: 1 - "+", 2 - "-", 3 - "*", 4 - "/".
-        public static bool IsNewNumberWaiting { get; set; } = true; //Ожидается ли ввод нового числа (при вводе нового символа стирается старое число).
-        public static bool IsError { get; set; } = false; //Произошла ли ошибка.
-        public static bool IsLastEqualButton { get; set; } = false; //Нажата ли последней кнопка "=".
-
-        public static void SetDefaultValues()
+        /// <summary>
+        /// Обработка нажатия клавиш.
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void Key(object sender, KeyEventArgs e)
         {
-            Number = 0;
-            Operation = 1;
-            IsError = false;
-            IsNewNumberWaiting = true;
-            IsLastEqualButton = false;
-        }
-
-        public static double Calculate(double additionalNumber)
-        {
-            switch (Operation)
+            switch (e.KeyCode) //Подключение кнопок.
             {
-                case 1:
-                    return Number += additionalNumber;
-
-                case 2:
-                    return Number -= additionalNumber;
-
-                case 3:
-                    return Number *= additionalNumber;
-
-                case 4:
-                    if (additionalNumber == 0)
-                    {
-                        IsError = true;
-
-                        throw new DivideByZeroException();
-                    }
-
-                    else
-                    {
-                        return Number /= additionalNumber;
-                    }
-
-                default:
-                    return double.NaN;
+                case Keys.Enter: { ButtonEqual_Click(buttonEqual, e); break; }
+                case Keys.NumPad0: case Keys.D0: { InputSymbol(button0, e); break; }
+                case Keys.NumPad1: case Keys.D1: { InputSymbol(button1, e); break; }
+                case Keys.NumPad2: case Keys.D2: { InputSymbol(button2, e); break; }
+                case Keys.NumPad3: case Keys.D3: { InputSymbol(button3, e); break; }
+                case Keys.NumPad4: case Keys.D4: { InputSymbol(button4, e); break; }
+                case Keys.NumPad5: case Keys.D5: { InputSymbol(button5, e); break; }
+                case Keys.NumPad6: case Keys.D6: { InputSymbol(button6, e); break; }
+                case Keys.NumPad7: case Keys.D7: { InputSymbol(button7, e); break; }
+                case Keys.NumPad8: case Keys.D8: { InputSymbol(button8, e); break; }
+                case Keys.NumPad9: case Keys.D9: { InputSymbol(button9, e); break; }
+                case Keys.Add: { ProcessArithmeticOperation(buttonPlus, e); break; }
+                case Keys.Subtract: { ProcessArithmeticOperation(buttonMinus, e); break; }
+                case Keys.Multiply: { ProcessArithmeticOperation(buttonMultiplication, e); break; }
+                case Keys.Divide: { ProcessArithmeticOperation(buttonDivision, e); break; }
+                case Keys.Oemcomma: case Keys.OemPeriod: { InputSymbol(buttonComma, e); break; }
+                case Keys.Delete: { ButtonClear_Click(buttonClear, e); break; }
+                case Keys.Back: { ButtonDeleteLast_Click(buttonDeleteLast, e); break; }
             }
         }
-    }
-
-    /// <summary>
-    /// Исключение: деление на 0.
-    /// </summary>
-    public class DivideByZeroException : Exception
-    {
-
     }
 }
