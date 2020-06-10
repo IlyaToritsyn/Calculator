@@ -50,5 +50,15 @@ namespace ClassLibrary
             /// </summary>
             public override string Message { get; } = "Обращение к несуществующему номеру операции";
         }
+
+        public class InvalidArithmeticStringFormatException : CustomExceptions
+        {
+            public override string Message { get; } = "Неверный формат арифметической строки";
+        }
+
+        public class InvalidInput : CustomExceptions
+        {
+            public override string Message { get; } = "Недопустимый ввод";
+        }
     }
 }
