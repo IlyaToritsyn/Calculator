@@ -14,6 +14,7 @@ namespace ClassLibrary
         /// </summary>
         private static int operation = 0;
 
+        private static int digitsAfterPoint = 13;
         /// <summary>
         /// Посчитанный результат.
         /// </summary>
@@ -54,7 +55,7 @@ namespace ClassLibrary
 
         public static bool IsAdditionalFunctionActive { get; set; } = false;
 
-        public static bool IsSqrtLast { get; set; } = false;
+        //public static bool IsSqrtLast { get; set; } = false;
 
         public static bool IsInputActive { get; set; } = false;
 
@@ -63,9 +64,10 @@ namespace ClassLibrary
         /// </summary>
         public static double LastSecond { get; set; } = 0;
 
-        public static double ResultAfterEquals { get; set; } = 0;
-
-        public static Regex ArithmeticExpressionRegex { get; } = new Regex(@"^(?:-?\d+(,\d+)*(E[+-]\d+)*\s[*+\/-]\s)*-?\d+(,\d+)*(E[+-]\d+)*$");
+        /// <summary>
+        /// Фильтр для арифметических выражений (примеры данных, успешно проходящих фильтр: "1", "1 + 3", "4 * 5 - 3", "3 - 5 * 7 = -14", "5E+2 - 7 = -3,5E-9").
+        /// </summary>
+        public static Regex ArithmeticExpressionRegex { get; } = new Regex(@"^(?:-?\d+(,\d+)?(E[+-]\d+)?)(\s[*+\/-]\s(-?\d+(,\d+)?(E[+-]\d+)?))*(\s=\s-?\d+(,\d+)?(E[+-]\d+)?)?$");
 
         /// <summary>
         /// Восстановление умолчаний.
@@ -75,12 +77,12 @@ namespace ClassLibrary
             Operation = 0;
             Result = 0;
             LastSecond = 0;
-            ResultAfterEquals = 0;
+            //ResultAfterEquals = 0;
             IsEqualsLastOperation = true;
             IsClearingOnly = false;
             IsNewNumberExpected = true;
             IsAdditionalFunctionActive = false;
-            IsSqrtLast = false;
+            //IsSqrtLast = false;
             IsInputActive = false;
         }
 
@@ -96,7 +98,7 @@ namespace ClassLibrary
             switch (Operation)
             {
                 case 1:
-                    Result = Math.Round(Result + secondNumber, 13);
+                    Result = Math.Round(Result + secondNumber, digitsAfterPoint);
 
                     if (double.IsInfinity(Result))
                     {
@@ -107,7 +109,7 @@ namespace ClassLibrary
 
                     break;
                 case 2:
-                    Result = Math.Round(Result - secondNumber, 13);
+                    Result = Math.Round(Result - secondNumber, digitsAfterPoint);
 
                     if (double.IsInfinity(Result))
                     {
@@ -127,7 +129,7 @@ namespace ClassLibrary
 
                     else
                     {
-                        Result = Math.Round(Result * secondNumber, 13);
+                        Result = Math.Round(Result * secondNumber, digitsAfterPoint);
                     }
 
                     if (double.IsInfinity(Result) || ((Result == 0) && (!isNumberBeforeZero) && (secondNumber != 0)))
@@ -155,7 +157,7 @@ namespace ClassLibrary
                     {
                         isNumberBeforeZero = Result == 0;
 
-                        Result = Math.Round(Result / secondNumber, 13);
+                        Result = Math.Round(Result / secondNumber, digitsAfterPoint);
 
                         if (double.IsInfinity(Result) || ((Result == 0) && !isNumberBeforeZero))
                         {
@@ -171,27 +173,37 @@ namespace ClassLibrary
             }
 
             IsAdditionalFunctionActive = false;
-            IsSqrtLast = false;
+            //IsSqrtLast = false;
 
             return Result;
         }
 
+        /// <summary>
+        /// Получение ответа для арифметического выражения, заданного строкой.
+        /// </summary>
+        /// <param name="expression">Арифметическое выражение в виде строки</param>
+        /// <returns>Результат вычисления</returns>
         public static double Calculate(string expression)
         {
+            expression = expression.Trim();
+
             if (!ArithmeticExpressionRegex.IsMatch(expression))
             {
                 throw new CustomExceptions.InvalidArithmeticStringFormatException();
             }
 
+            if (expression.Contains("="))
+            {
+                expression = expression.Remove(expression.IndexOf('=') - 1);
+            }
+
             string[] data = expression.Split(' ');
             Operation = 0;
-            Result = double.Parse(data[0]);
-
-            double number;
+            Result = Math.Round(double.Parse(data[0]), digitsAfterPoint);
 
             foreach (string element in data)
             {
-                if (double.TryParse(element, out number))
+                if (double.TryParse(element, out double number))
                 {
                     Calculate(number);
                 }
@@ -216,6 +228,8 @@ namespace ClassLibrary
                             Operation = 4;
 
                             break;
+                        default:
+                            break;
                     }
                 }
             }
@@ -233,15 +247,15 @@ namespace ClassLibrary
             }
 
             IsAdditionalFunctionActive = true;
-            IsSqrtLast = true;
+            //IsSqrtLast = true;
 
-            return Math.Round(Math.Sqrt(number), 13);
+            return Math.Round(Math.Sqrt(number), digitsAfterPoint);
         }
 
         public static double CalculatePercent(double number)
         {
             IsAdditionalFunctionActive = true;
-            IsSqrtLast = false;
+            //IsSqrtLast = false;
 
             return Operation == 0 ? 0 : Result / 100 * number;
         }
@@ -255,7 +269,7 @@ namespace ClassLibrary
                 throw new CustomExceptions.DivideByZeroException();
             }
 
-            double result = Math.Round(1 / number, 13);
+            double result = Math.Round(1 / number, digitsAfterPoint);
 
             if (result == 0)
             {
@@ -265,7 +279,7 @@ namespace ClassLibrary
             }
 
             IsAdditionalFunctionActive = true;
-            IsSqrtLast = false;
+            //IsSqrtLast = false;
 
             return result;
         }

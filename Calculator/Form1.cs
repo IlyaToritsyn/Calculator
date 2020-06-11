@@ -182,9 +182,18 @@ namespace CS_lab_5_Calculator
 
             if (!Calculator.IsClearingOnly)
             {
-                log.Items.Add(CurrentEntry);
+                if (CurrentEntry.Contains(" "))
+                {
+                    CurrentEntry += " = " + Calculator.Result;
+                }
 
+                log.Items.Add(CurrentEntry);
                 log.SelectedIndex = log.Items.Count - 1;
+
+                if (CurrentEntry.Length >= 35)
+                {
+                    log.HorizontalScrollbar = true;
+                }
             }
 
             CurrentEntry = "";
@@ -340,7 +349,7 @@ namespace CS_lab_5_Calculator
 
             Calculator.IsEqualsLastOperation = false;
             Calculator.IsAdditionalFunctionActive = false;
-            Calculator.IsSqrtLast = false;
+            //Calculator.IsSqrtLast = false;
             Calculator.IsInputActive = false;
             Button pressedButton = (Button)sender;
 
@@ -464,7 +473,7 @@ namespace CS_lab_5_Calculator
                 int lastOperation = Calculator.Operation;
                 Calculator.IsEqualsLastOperation = true;
                 Calculator.IsAdditionalFunctionActive = false;
-                Calculator.IsSqrtLast = false;
+                //Calculator.IsSqrtLast = false;
                 Calculator.IsClearingOnly = false;
                 Calculator.IsNewNumberExpected = true;
                 CurrentEntry = "";
