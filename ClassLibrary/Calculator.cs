@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
 
 namespace ClassLibrary
@@ -14,7 +13,11 @@ namespace ClassLibrary
         /// </summary>
         private static int operation = 0;
 
-        private static int digitsAfterPoint = 13;
+        /// <summary>
+        /// Количество цифр после запятой при округлении.
+        /// </summary>
+        public static int DigitsAfterPoint { get; set; } = 13;
+
         /// <summary>
         /// Посчитанный результат.
         /// </summary>
@@ -49,15 +52,19 @@ namespace ClassLibrary
         public static bool IsClearingOnly { get; set; } = false;
 
         /// <summary>
-        /// Проверка: последняя операция - "=" (игнорируя операции ввода чисел).
+        /// Проверка: последняя операция - "=" (среди операций: +, -, *, /, =).
         /// </summary>
         public static bool IsEqualsLastOperation { get; set; } = true;
 
+        /// <summary>
+        /// Проверка: последняя операция - √, % или 1/x.
+        /// </summary>
         public static bool IsAdditionalFunctionActive { get; set; } = false;
 
-        //public static bool IsSqrtLast { get; set; } = false;
-
-        public static bool IsInputActive { get; set; } = false;
+        /// <summary>
+        /// Проверка: последняя операция - ввод символа.
+        /// </summary>
+        public static bool IsNewNumberBeingEntered { get; set; } = false;
 
         /// <summary>
         /// Последнее 2 число, позволяющее повторить пред. операцию с данным значением.
@@ -67,7 +74,8 @@ namespace ClassLibrary
         /// <summary>
         /// Фильтр для арифметических выражений (примеры данных, успешно проходящих фильтр: "1", "1 + 3", "4 * 5 - 3", "3 - 5 * 7 = -14", "5E+2 - 7 = -3,5E-9").
         /// </summary>
-        public static Regex ArithmeticExpressionRegex { get; } = new Regex(@"^(?:-?\d+(,\d+)?(E[+-]\d+)?)(\s[*+\/-]\s(-?\d+(,\d+)?(E[+-]\d+)?))*(\s=\s-?\d+(,\d+)?(E[+-]\d+)?)?$");
+        public static Regex ArithmeticExpressionRegex { get; } =
+            new Regex(@"^(?:-?\d+(,\d+)?(E[+-]\d+)?)(\s[*+\/-]\s(-?\d+(,\d+)?(E[+-]\d+)?))*(\s=\s-?\d+(,\d+)?(E[+-]\d+)?)?$");
 
         /// <summary>
         /// Восстановление умолчаний.
@@ -77,13 +85,11 @@ namespace ClassLibrary
             Operation = 0;
             Result = 0;
             LastSecond = 0;
-            //ResultAfterEquals = 0;
             IsEqualsLastOperation = true;
             IsClearingOnly = false;
             IsNewNumberExpected = true;
             IsAdditionalFunctionActive = false;
-            //IsSqrtLast = false;
-            IsInputActive = false;
+            IsNewNumberBeingEntered = false;
         }
 
         /// <summary>
@@ -98,7 +104,7 @@ namespace ClassLibrary
             switch (Operation)
             {
                 case 1:
-                    Result = Math.Round(Result + secondNumber, digitsAfterPoint);
+                    Result = Math.Round(Result + secondNumber, DigitsAfterPoint);
 
                     if (double.IsInfinity(Result))
                     {
@@ -109,7 +115,7 @@ namespace ClassLibrary
 
                     break;
                 case 2:
-                    Result = Math.Round(Result - secondNumber, digitsAfterPoint);
+                    Result = Math.Round(Result - secondNumber, DigitsAfterPoint);
 
                     if (double.IsInfinity(Result))
                     {
@@ -129,7 +135,7 @@ namespace ClassLibrary
 
                     else
                     {
-                        Result = Math.Round(Result * secondNumber, digitsAfterPoint);
+                        Result = Math.Round(Result * secondNumber, DigitsAfterPoint);
                     }
 
                     if (double.IsInfinity(Result) || ((Result == 0) && (!isNumberBeforeZero) && (secondNumber != 0)))
@@ -157,7 +163,7 @@ namespace ClassLibrary
                     {
                         isNumberBeforeZero = Result == 0;
 
-                        Result = Math.Round(Result / secondNumber, digitsAfterPoint);
+                        Result = Math.Round(Result / secondNumber, DigitsAfterPoint);
 
                         if (double.IsInfinity(Result) || ((Result == 0) && !isNumberBeforeZero))
                         {
@@ -173,7 +179,6 @@ namespace ClassLibrary
             }
 
             IsAdditionalFunctionActive = false;
-            //IsSqrtLast = false;
 
             return Result;
         }
@@ -199,7 +204,7 @@ namespace ClassLibrary
 
             string[] data = expression.Split(' ');
             Operation = 0;
-            Result = Math.Round(double.Parse(data[0]), digitsAfterPoint);
+            Result = Math.Round(double.Parse(data[0]), DigitsAfterPoint);
 
             foreach (string element in data)
             {
@@ -237,6 +242,11 @@ namespace ClassLibrary
             return Result;
         }
 
+        /// <summary>
+        /// Вычисление квадратного корня.
+        /// </summary>
+        /// <param name="number">Число, из которого следует извлечь корень</param>
+        /// <returns>Корень числа</returns>
         public static double CalculateSqrt(double number)
         {
             if (number < 0)
@@ -247,19 +257,27 @@ namespace ClassLibrary
             }
 
             IsAdditionalFunctionActive = true;
-            //IsSqrtLast = true;
 
-            return Math.Round(Math.Sqrt(number), digitsAfterPoint);
+            return Math.Round(Math.Sqrt(number), DigitsAfterPoint);
         }
 
+        /// <summary>
+        /// Вычисление процентов.
+        /// </summary>
+        /// <param name="number">Количество процентов</param>
+        /// <returns>Эквивалентное заданным процентам число от пред. результата.</returns>
         public static double CalculatePercent(double number)
         {
             IsAdditionalFunctionActive = true;
-            //IsSqrtLast = false;
 
             return Operation == 0 ? 0 : Result / 100 * number;
         }
 
+        /// <summary>
+        /// Получение результата операции 1/x.
+        /// </summary>
+        /// <param name="number">x</param>
+        /// <returns>Результат операции 1/x</returns>
         public static double CalculateOneDividedX(double number)
         {
             if (number == 0)
@@ -269,7 +287,7 @@ namespace ClassLibrary
                 throw new CustomExceptions.DivideByZeroException();
             }
 
-            double result = Math.Round(1 / number, digitsAfterPoint);
+            double result = Math.Round(1 / number, DigitsAfterPoint);
 
             if (result == 0)
             {
@@ -279,7 +297,6 @@ namespace ClassLibrary
             }
 
             IsAdditionalFunctionActive = true;
-            //IsSqrtLast = false;
 
             return result;
         }

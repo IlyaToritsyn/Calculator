@@ -51,13 +51,25 @@ namespace ClassLibrary
             public override string Message { get; } = "Обращение к несуществующему номеру операции";
         }
 
+        /// <summary>
+        /// Исключение: неверный формат арифметической строки.
+        /// </summary>
         public class InvalidArithmeticStringFormatException : CustomExceptions
         {
+            /// <summary>
+            /// Сообщение об ошибке.
+            /// </summary>
             public override string Message { get; } = "Неверный формат арифметической строки";
         }
 
+        /// <summary>
+        /// Исключение: недопустимый ввод.
+        /// </summary>
         public class InvalidInput : CustomExceptions
         {
+            /// <summary>
+            /// Сообщение об ошибке.
+            /// </summary>
             public override string Message { get; } = "Недопустимый ввод";
         }
     }

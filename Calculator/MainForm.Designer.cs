@@ -1,8 +1,8 @@
 ﻿using System.Windows.Forms;
 
-namespace CS_lab_5_Calculator
+namespace CS_lab_6_Advanced_calculator
 {
-    partial class Form1
+    partial class MainForm
     {
         /// <summary>
         /// Обязательная переменная конструктора.

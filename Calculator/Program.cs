@@ -4,7 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
-namespace CS_lab_5_Calculator
+namespace CS_lab_6_Advanced_calculator
 {
     static class Program
     {
@@ -16,7 +16,7 @@ namespace CS_lab_5_Calculator
         {
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
-            Application.Run(new Form1());
+            Application.Run(new MainForm());
         }
     }
 }

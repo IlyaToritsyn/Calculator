@@ -8,7 +8,7 @@
 // </auto-generated>
 //------------------------------------------------------------------------------
 
-namespace CS_lab_5_Calculator.Properties {
+namespace CS_lab_6_Advanced_calculator.Properties {
     using System;
     
     
